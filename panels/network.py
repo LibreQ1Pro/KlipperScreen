@@ -6,7 +6,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 from datetime import datetime
 
-from gi.repository import GLib, Gtk, Pango
+from gi.repository import Gdk, GLib, Gtk, Pango
 from sdbus_block.networkmanager import enums
 
 from ks_includes.screen_panel import ScreenPanel
@@ -79,6 +79,7 @@ class Panel(ScreenPanel):
             if self.interface is not None:
                 self.labels["interface"].set_active_id(self.interface)
             self.labels["interface"].connect("changed", self.iface_changed)
+            self.labels["interface"].forall(self.open_dropdown_on_release, self.labels["interface"])
 
         self.labels["ip"] = Gtk.Label(hexpand=True)
         if self.interface is not None:
@@ -228,6 +229,21 @@ class Panel(ScreenPanel):
             self.labels["ip"].set_text(f"{self.sdbus_nm.get_ip_for_interface(iface)}")
         else:
             self.labels["ip"].set_text(f"IP: {self.sdbus_nm.get_ip_for_interface(iface)}")
+
+    def open_dropdown_on_release(self, child, combo):
+        if isinstance(child, Gtk.ToggleButton):
+            def on_event(widget, event):
+                if event.type == Gdk.EventType.TOUCH_BEGIN:
+                    return True
+                if event.type == Gdk.EventType.TOUCH_END:
+                    combo.popup()
+                    return True
+                return False
+
+            child.add_events(Gdk.EventMask.TOUCH_MASK)
+            child.connect("event", on_event)
+        elif isinstance(child, Gtk.Container):
+            child.forall(self.open_dropdown_on_release, combo)
 
     def iface_changed(self, combo):
         selected_iface = combo.get_active_id()
